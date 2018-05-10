@@ -5,10 +5,10 @@
   <modelVersion>4.0.0</modelVersion>
   <packaging>jar</packaging>
 
-  <groupId>com.hotels.styx</groupId>
+  <groupId>com.hotels.styx.examples</groupId>
   <artifactId>plugin-examples</artifactId>
   <name>Styx proxy plugin examples</name>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.7-SNAPSHOT</version>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -35,7 +35,7 @@
       <groupId>com.hotels.styx</groupId>
       <artifactId>styx-api</artifactId>
       <version>${styx.version}</version>
-      <!-- The dependency is explicitlu needed only during compile time, styx is already available in the runtime-->
+      <!-- The explicit dependency is needed only during compile time, styx is already available in the runtime-->
       <scope>provided</scope>
     </dependency>
     <dependency>

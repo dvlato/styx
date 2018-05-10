@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+
+    <id>standalone</id>
+    <formats>
+        <format>zip</format>
+    </formats>
+    <includeBaseDirectory>true</includeBaseDirectory>
+    <baseDirectory>styx</baseDirectory>
+    <dependencySets>
+        <dependencySet>
+            <includes>
+                <include>com.hotels.styx:styx</include>
+            </includes>
+            <unpack>true</unpack>
+            <outputDirectory>.</outputDirectory>
+        </dependencySet>
+
+        <dependencySet>
+            <excludes>
+                <exclude>com.hotels.styx:styx</exclude>
+            </excludes>
+            <outputDirectory>plugins/${artifact.artifactId}</outputDirectory>
+        </dependencySet>
+    </dependencySets>
+
+</assembly>

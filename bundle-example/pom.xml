@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.hotels.styx.examples</groupId>
+    <artifactId>styx-bundle-example</artifactId>
+    <packaging>pom</packaging>
+    <name>Styx - Bundle Example</name>
+    <version>0.7-SNAPSHOT</version>
+
+    <properties>
+        <styx.version>0.7.778</styx.version>
+        <maven-dependency-plugin.version>2.8</maven-dependency-plugin.version>
+        <styx-classifier></styx-classifier>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.hotels.styx.examples</groupId>
+            <artifactId>plugin-examples</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.hotels.styx</groupId>
+            <artifactId>styx</artifactId>
+            <version>${styx.version}</version>
+            <classifier>${styx-classifier}</classifier>
+            <type>zip</type>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <!--  <plugin>
+                  <groupId>org.apache.maven.plugins</groupId>
+                  <artifactId>maven-dependency-plugin</artifactId>
+                  <version>${maven-dependency-plugin.version}</version>
+                  <executions>
+                      <execution>
+                          <id>unpack-styx</id>
+                          <phase>package</phase>
+                          <goals>
+                              <goal>unpack</goal>
+                          </goals>
+                          <configuration>
+                              <artifactItems>
+                                  <artifactItem>
+                                      <groupId>com.hotels.styx</groupId>
+                                      <artifactId>styx</artifactId>
+                                      <version>${styx.version}</version>
+                                      <type>zip</type>
+                                  </artifactItem>
+                              </artifactItems>
+                              <outputDirectory>${project.build.directory}/distribution</outputDirectory>
+                              <overWriteReleases>false</overWriteReleases>
+                              <overWriteSnapshots>true</overWriteSnapshots>
+                          </configuration>
+                      </execution>
+                  </executions>
+              </plugin>
+  -->
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>standalone</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>${project.basedir}/artifact.xml</descriptor>
+                            </descriptors>
+                            <finalName>${artifact.finalName}</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <attach>false</attach>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+
+</project>
