@@ -91,13 +91,14 @@ quality: clean
 quality-no-tests:
 	mvn -Dmaven.test.skip=true clean install -Pquality -Dmaven.test.skip=true
 
+STYX_BUILD_ARTIFACT = $(shell find distribution/target -maxdepth 1  -mindepth 1 -name "styx*.zip")
 STYX_HOME = $(CURRENT_DIR)/distribution/target/styx/styx
 DOCKER_CONTEXT = $(CURRENT_DIR)/distribution/target/styx/docker
 CONFIG_ROOT := $(STYX_HOME)/conf/env-$(STACK)
 
 ## Compile and create styx.zip then unzip into a directory defined by STYX_HOME
 release-styx: release-no-tests
-	unzip -oq $(shell find  distribution/target -name "styx*.zip" -depth 1) -d $(dir ${STYX_HOME})
+	unzip -oq ${STYX_BUILD_ARTIFACT} -d $(dir ${STYX_HOME})
 	mv `find $(CURRENT_DIR)/distribution/target/styx -type d -name "styx-*"` ${STYX_HOME}
 
 ## Stops running netty-based origins (i.e. the origins started by start-origins)
