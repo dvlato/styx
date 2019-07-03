@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2013-2018 Expedia Inc.
+  Copyright (C) 2013-2019 Expedia Inc.
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistryListener;
+import com.codahale.metrics.SlidingTimeWindowArrayReservoir;
 import com.codahale.metrics.Timer;
 import com.hotels.styx.api.MetricRegistry;
 import com.hotels.styx.api.metrics.ScopedMetricRegistry;
@@ -30,6 +31,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link MetricRegistry} that acts as an adapter for Codahale's {@link com.codahale.metrics.MetricRegistry}.
@@ -100,7 +102,7 @@ public class CodaHaleMetricRegistry implements MetricRegistry {
 
         if (metric == null) {
             try {
-                return register(name, newTimer());
+                return register(name,  newTimer());
             } catch (IllegalArgumentException e) {
                 Metric added = metrics.get(name);
                 if (added instanceof Timer) {
@@ -112,7 +114,7 @@ public class CodaHaleMetricRegistry implements MetricRegistry {
     }
 
     private Timer newTimer() {
-        return new SampleCountFromSnapshotTimer(new SlidingWindowHistogramReservoir());
+        return new Timer(new SlidingTimeWindowArrayReservoir(1, TimeUnit.MINUTES));
     }
 
     @Override
@@ -215,17 +217,6 @@ public class CodaHaleMetricRegistry implements MetricRegistry {
                 builder.append('.');
             }
             builder.append(part);
-        }
-    }
-
-    private static class SampleCountFromSnapshotTimer extends Timer {
-        public SampleCountFromSnapshotTimer(SlidingWindowHistogramReservoir slidingWindowHistogramReservoir) {
-            super(slidingWindowHistogramReservoir);
-        }
-
-        @Override
-        public long getCount() {
-            return (long) getSnapshot().size();
         }
     }
 
