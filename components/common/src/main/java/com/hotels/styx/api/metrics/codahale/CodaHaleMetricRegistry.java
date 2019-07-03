@@ -102,7 +102,7 @@ public class CodaHaleMetricRegistry implements MetricRegistry {
 
         if (metric == null) {
             try {
-                return register(name,  newTimer() );
+                return register(name,  newTimer());
             } catch (IllegalArgumentException e) {
                 Metric added = metrics.get(name);
                 if (added instanceof Timer) {
