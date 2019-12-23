@@ -86,13 +86,6 @@
         <artifactId>maven-failsafe-plugin</artifactId>
         <version>${maven-failsafe-plugin.version}</version>
 
-        <dependencies>
-          <dependency>
-            <groupId>org.junit.platform</groupId>
-            <artifactId>junit-platform-surefire-provider</artifactId>
-            <version>${junit.platform.surefire.provider.version}</version>
-          </dependency>
-        </dependencies>
 
         <executions>
           <execution>
@@ -104,6 +97,14 @@
         </executions>
 
         <configuration>
+          <forkCount>1C</forkCount>
+          <reuseForks>true</reuseForks>
+          <argLine>
+            -Xmx300m
+            -XX:+HeapDumpOnOutOfMemoryError
+            -XX:HeapDumpPath=${project.build.directory}/failsafe-reports
+            ${argLine}
+          </argLine>
           <includes>
             <include>*Spec</include>
           </includes>
