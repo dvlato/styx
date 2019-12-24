@@ -97,9 +97,9 @@
         </executions>
 
         <configuration>
-          <forkCount>1</forkCount>
+          <forkCount>1C</forkCount>
           <reuseForks>true</reuseForks>
-          <forkMode>false</forkMode>
+          <forkMode>once</forkMode>
           <argLine>
             -Xmx300m
             -XX:+HeapDumpOnOutOfMemoryError
