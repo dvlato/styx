@@ -1094,7 +1094,7 @@
           <plugin>
             <artifactId>maven-failsafe-plugin</artifactId>
             <configuration>
-              <forkCount>1</forkCount>
+              <forkCount>2</forkCount>
               <reuseForks>true</reuseForks>
               <argLine>
                 -Xmx300m
