@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash -x
 set -x
 
 echo "Deploying snapshot"
