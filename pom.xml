@@ -1167,6 +1167,9 @@
     </profile>
     <profile>
       <id>sonatype-oss-release</id>
+      <modules>
+        <module>distribution</module>
+      </modules>
       <build>
         <plugins>
           <plugin>
