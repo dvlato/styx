@@ -4,3 +4,11 @@ script: mvn verify -Pquality,linux
 cache:
   directories:
   - ~/.m2/repository
+deploy:
+  provider: script
+  edge: true
+  script: travis/deploy.sh
+  on:
+    branch: testdeployment
+
+
