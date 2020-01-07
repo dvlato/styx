@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -xe
 #
 # Copyright (C) 2013-2020 Expedia Inc.
 #
