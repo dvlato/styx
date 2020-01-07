@@ -17,5 +17,6 @@
 
 echo "Deploying snapshot"
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-mvn deploy --settings travis/mvn-settings.xml -B -U -P sonatype-oss-release,linux,docker -DskipTests=true -Dmaven.test.skip=true -Dgpg.skip=true  -Dstyxcore.docker.image=dlatorre/styx
+mvn deploy --settings travis/mvn-settings.xml -B -U -P sonatype-oss-release,linux -DskipTests=true -Dmaven.test.skip=true -Dgpg.skip=true  -Dstyxcore.docker.image=dlatorre/styx
+mvn install -f distribution/pom.xml -B -U -P docker -Dstyxcore.docker.image=dlatorre/styx
 docker push dlatorre/styx
