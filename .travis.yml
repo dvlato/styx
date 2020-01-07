@@ -1,6 +1,6 @@
 dist: trusty
 language: java
-script: mvn -v
+script: mvn verify -Pquality,linux
 cache:
   directories:
   - ~/.m2/repository
