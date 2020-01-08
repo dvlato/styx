@@ -15,8 +15,25 @@
 # limitations under the License.
 #
 
-echo "Deploying snapshot"
-echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+function deployRelease() {
+echo "Deploying Release to sonatype and docker hub"
+#Ensure a correct version was configured in the pom files.
+mvn versions:set -DnewVersion=$TRAVIS_TAG
+#Deploy to sonatype
 mvn deploy --settings travis/mvn-settings.xml -B -U -P sonatype-oss-release,linux -DskipTests=true -Dmaven.test.skip=true -Dgpg.skip=true
+#Deploy to dockerhub
+echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 mvn install -f distribution/pom.xml -B -U -P docker -Dstyxcore.docker.image=dlatorre/styx
 docker push dlatorre/styx
+}
+
+function deploySnapshot() {
+  echo "Deploying snapshot to sonatype"
+  mvn deploy --settings travis/mvn-settings.xml -B -U -P sonatype-oss-release,linux -DskipTests=true -Dmaven.test.skip=true -Dgpg.skip=true
+}
+
+if [[ -n "$TRAVIS_TAG" ]]; then
+  deployRelease
+else
+  deploySnapshot
+fi
