@@ -20,3 +20,14 @@ deploy:
     on:
       tags: true
 
+  - provider: releases
+    user: "${GIT_USER}"
+    password: "${GIT_PASSWORD}"
+    file_glob: true
+    file: "./distribution/target/styx-*.zip"
+    skip_cleanup: true
+    on:
+      tags: true
+
+
+
