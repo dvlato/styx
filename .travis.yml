@@ -1,33 +1,24 @@
-sudo: required
 dist: trusty
 language: java
-#script: mvn verify -Pquality,linux
 script: mvn -v
-services:
-  - docker
 cache:
   directories:
-  - ~/.m2/repository
+  - "~/.m2/repository"
 deploy:
-  - provider: script
-    script: travis/deploy.sh
-    skip_cleanup: true
-    on:
-      branch: testdeployment
-  - provider: script
-    script: travis/deploy.sh
-    skip_cleanup: true
-    on:
-      tags: true
-
-  - provider: releases
-    user: "${GIT_USER}"
-    password: "${GIT_PASSWORD}"
-    file_glob: true
-    file: "./distribution/target/styx-*.zip"
-    skip_cleanup: true
-    on:
-      tags: true
-
-
-
+- provider: script
+  script: travis/deploy.sh
+  skip_cleanup: true
+  on:
+    branch: testdeployment
+- provider: script
+  script: travis/deploy.sh
+  skip_cleanup: true
+  on:
+    tags: true
+- provider: releases
+  api_key: $GIT_TOKEN
+  file_glob: true
+  file: "./distribution/target/styx-*.zip"
+  skip_cleanup: true
+  on:
+    tags: true
