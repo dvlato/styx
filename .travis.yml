@@ -1,6 +1,6 @@
 dist: trusty
 language: java
-script: mvn -v
+script: mvn help:effective-settings
 cache:
   directories:
   - "~/.m2/repository"
