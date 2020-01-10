@@ -25,6 +25,9 @@ mvn deploy --settings travis/mvn-settings.xml -B -U -P sonatype-oss-release,linu
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 mvn install -f distribution/pom.xml -B -U -P docker -Dstyxcore.docker.image=dlatorre/styx
 docker push dlatorre/styx
+
+#Prepare macosx bundle for github releases
+mvn install -B -U -P macosx -DskipTests=true -Dmaven.test.skip=true -Dgpg.skip=true
 }
 
 function deploySnapshot() {
