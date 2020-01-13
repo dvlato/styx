@@ -27,7 +27,7 @@ mvn install -f distribution/pom.xml -B -U -P docker -Dstyxcore.docker.image=dlat
 docker push dlatorre/styx
 
 #Prepare macosx bundle for github releases
-mvn install -B -U -P macosx -DskipTests=true -Dmaven.test.skip=true -Dgpg.skip=true
+mvn install -B -U -P macosx,release -DskipTests=true -Dmaven.test.skip=true -Dgpg.skip=true
 }
 
 function deploySnapshot() {
