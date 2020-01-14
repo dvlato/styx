@@ -165,6 +165,7 @@
     <!-- non apache plugin versions and configurations, please sort alphabetically -->
     <build-helper-maven-plugin.version>1.9.1</build-helper-maven-plugin.version>
     <jacoco-maven-plugin.version>0.7.5.201505241946</jacoco-maven-plugin.version>
+    <nexus-staging-maven-plugin.version>1.6.8</nexus-staging-maven-plugin.version>
 
     <!-- code quality -->
     <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
@@ -1115,6 +1116,17 @@
                 </configuration>
               </execution>
             </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.plugins</groupId>
+            <artifactId>nexus-staging-maven-plugin</artifactId>
+            <version>${nexus-staging-maven-plugin.version}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <serverId>ossrh</serverId>
+              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+              <autoReleaseAfterClose>true</autoReleaseAfterClose>
+            </configuration>
           </plugin>
         </plugins>
       </build>
