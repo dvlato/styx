@@ -14,16 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
+set -xe
 function deployRelease() {
-#Verify that PGP keys are available
-
-if [[ -z $GPG_PUBLIC_KEYS ]]; then
-  echo "GPG public key is missing. It should be present in the variable GPG_PUBLIC_KEYS"
-fi
-if [[ -z $GPG_SECRET_KEYS ]]; then
-  echo "GPG private key is missing. It should be present in the variable GPG_SECRET_KEYS"
-fi
+set -u
+export GPG_PUBLIC_KEYS=$GPG_PUBLIC_KEYS
+export GPG_SECRET_KEYS=$GPG_SECRET_KEYS
+export GPG_KEY_NAME=$GPG_KEY_NAME
+export GPG_PASSPHRASE=$GPG_PASSPHRASE
 
 echo "Deploying Release to sonatype and docker hub"
 #Ensure a correct version was configured in the pom files.
