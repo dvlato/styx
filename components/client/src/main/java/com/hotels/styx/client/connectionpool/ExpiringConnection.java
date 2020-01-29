@@ -21,6 +21,8 @@ import com.hotels.styx.api.LiveHttpRequest;
 import com.hotels.styx.api.LiveHttpResponse;
 import com.hotels.styx.api.extension.Origin;
 import com.hotels.styx.client.Connection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 import java.util.function.Supplier;
@@ -33,6 +35,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  * a time pasted.
  */
 class ExpiringConnection implements Connection {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExpiringConnection.class);
     private final Connection nettyConnection;
     private final long connectionExpirationSeconds;
     private final Stopwatch stopwatch;
@@ -69,6 +72,7 @@ class ExpiringConnection implements Connection {
 
     @Override
     public void close() {
+        LOGGER.warn("Close was called ", new RuntimeException("Close was called "));
         nettyConnection.close();
     }
 
