@@ -82,13 +82,6 @@ class OriginsFileCompatibilitySpec : FunSpec() {
     init {
 
         context("Origins configuration changes") {
-            writeOrigins("""
-                - id: appA
-                  path: "/"
-                  origins:
-                  - { id: "appA-01", host: "localhost:${mockServerA01.port()}" } 
-            """.trimIndent())
-            styxServer.restart()
 
             test("TLSSettings modifications") {
                 writeOrigins("""
@@ -102,6 +95,9 @@ class OriginsFileCompatibilitySpec : FunSpec() {
                       origins:
                       - { id: "appTls-01", host: "localhost:${mockTlsv12Server.port()}" } 
                     """.trimIndent())
+
+                styxServer.restart()
+
                 eventually(2.seconds, AssertionError::class.java) {
                     client.send(get("/11")
                             .header(HOST, styxServer().proxyHttpHostHeader())
