@@ -86,7 +86,7 @@ public class HttpRequestOperation {
         this.responseTimeoutMillis = responseTimeoutMillis;
         this.requestLoggingEnabled = requestLoggingEnabled;
         this.httpRequestMessageLogger = new HttpRequestMessageLogger("com.hotels.styx.http-messages.outbound", longFormat, httpMessageFormatter);
-        LOGGER.warn("Response timeout millis is "+responseTimeoutMillis);
+        LOGGER.warn("Response timeout millis is "+responseTimeoutMillis, new Exception("Response timeout millis is "+responseTimeoutMillis));
     }
 
     @VisibleForTesting
