@@ -98,6 +98,7 @@ class OriginsFileCompatibilitySpec : FunSpec() {
 
                 styxServer.restart()
 
+                Thread.sleep(2000);
                 eventually(2.seconds, AssertionError::class.java) {
                     client.send(get("/11")
                             .header(HOST, styxServer().proxyHttpHostHeader())
