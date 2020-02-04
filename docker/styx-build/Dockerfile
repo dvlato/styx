@@ -22,5 +22,6 @@ RUN yum install -y java-1.8.0-openjdk-devel \
 ENV PATH=/opt/apache-maven-${MVN_VERSION}/bin:$PATH
 ENV JAVA_HOME=/etc/alternatives/java_sdk
 
+ADD . /styx
 
 
