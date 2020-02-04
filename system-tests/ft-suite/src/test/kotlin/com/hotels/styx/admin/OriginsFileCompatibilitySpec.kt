@@ -298,8 +298,8 @@ class OriginsFileCompatibilitySpec : FunSpec() {
                       origins:
                       - { id: "appTls-01", host: "localhost:${mockTlsv12Server.port()}" } 
                     """.trimIndent())
-
-                eventually(2.seconds, AssertionError::class.java) {
+                styxServer.restart()
+                eventually(3.seconds, AssertionError::class.java) {
                     client.send(get("/11")
                             .header(HOST, styxServer().proxyHttpHostHeader())
                             .build())
