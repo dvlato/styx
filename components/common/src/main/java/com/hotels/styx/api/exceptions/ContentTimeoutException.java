@@ -16,6 +16,8 @@
 package com.hotels.styx.api.exceptions;
 
 import com.hotels.styx.api.extension.Origin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static java.lang.String.format;
 
@@ -24,11 +26,14 @@ import static java.lang.String.format;
  */
 public class ContentTimeoutException extends TransportException implements IsDeadConnectionException, IsTimeoutException {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ContentTimeoutException.class);
     private final Origin origin;
 
     public ContentTimeoutException(Origin origin, String reason, long bytesReceived, long chunksReceived, long bytesEmitted, long chunksEmitted) {
         super(message(origin, reason, bytesReceived, chunksReceived, bytesEmitted, chunksEmitted));
         this.origin = origin;
+        //FIX-ME: This will invoke a method before successfully building the object. Just for testing.
+        LOGGER.warn("Content timeout exception generated: {} ", this);
     }
 
     private static String message(Origin origin, String reason, long bytesReceived, long chunksReceived, long bytesEmitted, long chunksEmitted) {
