@@ -22,8 +22,9 @@ import com.hotels.styx.api.HttpVersion;
 import com.hotels.styx.api.LiveHttpRequest;
 import com.hotels.styx.api.Url;
 import com.hotels.styx.api.exceptions.TransportException;
+import com.hotels.styx.common.content.FlowControllerTimer;
 import com.hotels.styx.common.content.FlowControllingHttpContentProducer;
-import com.hotels.styx.common.content.FlowControllingPublisher;
+import com.hotels.styx.common.content.QueueDrainingPublisher;
 import com.hotels.styx.common.format.DefaultHttpMessageFormatter;
 import com.hotels.styx.common.format.HttpMessageFormatter;
 import com.hotels.styx.server.BadRequestException;
@@ -92,22 +93,24 @@ public final class NettyToStyxRequestDecoder extends MessageToMessageDecoder<Htt
                 ctx.channel().config().setAutoRead(false);
                 ctx.channel().read();
 
-                this.producer = Optional.of(createProducer(ctx));
-                Publisher<Buffer> contentPublisher = new FlowControllingPublisher(
-                        ctx.channel().eventLoop(),
-                        this.producer.get());
+                HttpRequest nettyRequest = (HttpRequest) msg;
 
-                LiveHttpRequest styxRequest = toStyxRequest((HttpRequest) msg, contentPublisher);
+                this.producer = Optional.of(createProducer(ctx, nettyRequest.uri()));
+                Publisher<Buffer> contentPublisher = new QueueDrainingPublisher(this.producer.get());
+
+                LiveHttpRequest styxRequest = toStyxRequest(nettyRequest, contentPublisher);
                 out.add(styxRequest);
 
             }
             if (msg instanceof HttpContent) {
+                assert this.producer.isPresent();
+
                 ByteBuf content = ((ByteBufHolder) msg).content();
                 if (content.isReadable()) {
-                    getContentProducer(ctx).newChunk(retain(content));
+                    this.producer.ifPresent(it -> it.newChunk(retain(content)));
                 }
                 if (msg instanceof LastHttpContent) {
-                    getContentProducer(ctx).lastHttpContent();
+                    this.producer.ifPresent(FlowControllingHttpContentProducer::lastHttpContent);
                 }
             }
         } catch (BadRequestException ex) {
@@ -121,37 +124,31 @@ public final class NettyToStyxRequestDecoder extends MessageToMessageDecoder<Htt
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         TransportException cause = new TransportException(
                 "Connection to client lost: " + ctx.channel().remoteAddress());
-        getContentProducer(ctx).channelInactive(cause);
+        this.producer.ifPresent(it -> it.channelInactive(cause));
         super.channelInactive(ctx);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         if (cause instanceof TooLongFrameException) {
-            getContentProducer(ctx).channelException(new BadRequestException(cause.getMessage(), cause));
+            this.producer.ifPresent(it -> it.channelException(new BadRequestException(cause.getMessage(), cause)));
         } else {
-            getContentProducer(ctx).channelException(cause);
+            this.producer.ifPresent(it -> it.channelException(cause));
         }
         super.exceptionCaught(ctx, cause);
     }
 
-    private FlowControllingHttpContentProducer getContentProducer(ChannelHandlerContext ctx) {
-        if (!this.producer.isPresent()) {
-            this.producer = Optional.of(createProducer(ctx));
-        }
-        return this.producer.get();
-    }
+    private FlowControllingHttpContentProducer createProducer(ChannelHandlerContext ctx, String uri) {
+        String loggingPrefix = format("Request body. %s [remote: %s, local: %s]", uri, ctx.channel().remoteAddress(), ctx.channel().localAddress());
 
-    private FlowControllingHttpContentProducer createProducer(ChannelHandlerContext ctx) {
-        String loggingPrefix = format("%s -> %s", ctx.channel().remoteAddress(), ctx.channel().localAddress());
-
-        return new FlowControllingHttpContentProducer(
+        FlowControllingHttpContentProducer producer = new FlowControllingHttpContentProducer(
                 () -> ctx.channel().read(),
                 () -> ctx.channel().config().setAutoRead(true),
                 cause -> { },
                 format("%s, %s", loggingPrefix, ""),
-                null,
-                inactivityTimeoutMs);
+                null);
+        new FlowControllerTimer(inactivityTimeoutMs, ctx.channel().eventLoop(), producer).checkActivity();
+        return producer;
     }
 
     private LiveHttpRequest toStyxRequest(HttpRequest request, Publisher<Buffer> contentPublisher) {

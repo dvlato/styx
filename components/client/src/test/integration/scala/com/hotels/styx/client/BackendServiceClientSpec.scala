@@ -23,7 +23,7 @@ import com.google.common.base.Charsets._
 import com.hotels.styx.api.HttpResponseStatus.OK
 import com.hotels.styx.api.LiveHttpRequest.get
 import com.hotels.styx.api.LiveHttpResponse
-import com.hotels.styx.api.exceptions.ResponseTimeoutException
+import com.hotels.styx.api.exceptions.ContentTimeoutException
 import com.hotels.styx.api.extension.Origin._
 import com.hotels.styx.api.extension.loadbalancing.spi.LoadBalancer
 import com.hotels.styx.api.extension.service.BackendService
@@ -31,6 +31,7 @@ import com.hotels.styx.api.extension.{ActiveOrigins, Origin}
 import com.hotels.styx.client.OriginsInventory.newOriginsInventoryBuilder
 import com.hotels.styx.client.StyxBackendServiceClient._
 import com.hotels.styx.client.loadbalancing.strategies.BusyConnectionsStrategy
+import com.hotels.styx.support.Support.requestContext
 import com.hotels.styx.support.server.FakeHttpServer
 import com.hotels.styx.support.server.UrlMatchingStrategies._
 import io.netty.buffer.Unpooled._
@@ -83,7 +84,7 @@ class BackendServiceClientSpec extends FunSuite with BeforeAndAfterAll with Matc
 
   test("Emits an HTTP response even when content observable remains un-subscribed.") {
     originOneServer.stub(urlStartingWith("/"), response200OkWithContentLengthHeader("Test message body."))
-    val response = Mono.from(client.sendRequest(get("/foo/1").build())).block()
+    val response = Mono.from(client.sendRequest(get("/foo/1").build(), requestContext())).block()
     assert(response.status() == OK, s"\nDid not get response with 200 OK status.\n$response\n")
   }
 
@@ -91,7 +92,7 @@ class BackendServiceClientSpec extends FunSuite with BeforeAndAfterAll with Matc
   test("Emits an HTTP response containing Content-Length from persistent connection that stays open.") {
     originOneServer.stub(urlStartingWith("/"), response200OkWithContentLengthHeader("Test message body."))
 
-    val response = Mono.from(client.sendRequest(get("/foo/2").build()))
+    val response = Mono.from(client.sendRequest(get("/foo/2").build(), requestContext()))
       .flatMap((liveHttpResponse: LiveHttpResponse) => {
         Mono.from(liveHttpResponse.aggregate(10000))
       })
@@ -105,7 +106,7 @@ class BackendServiceClientSpec extends FunSuite with BeforeAndAfterAll with Matc
   ignore("Determines response content length from server closing the connection.") {
     // originRespondingWith(response200OkFollowedFollowedByServerConnectionClose("Test message body."))
 
-    val response = Mono.from(client.sendRequest(get("/foo/3").build()))
+    val response = Mono.from(client.sendRequest(get("/foo/3").build(), requestContext()))
       .flatMap((liveHttpResponse: LiveHttpResponse) => {
         Mono.from(liveHttpResponse.aggregate(10000))
       })
@@ -123,14 +124,14 @@ class BackendServiceClientSpec extends FunSuite with BeforeAndAfterAll with Matc
       .withFixedDelay(3000))
 
     val maybeResponse = Try {
-      Mono.from(client.sendRequest(get("/foo/4").build()))
+      Mono.from(client.sendRequest(get("/foo/4").build(), requestContext()))
         .doOnSubscribe((t: Subscription) => start.set(System.currentTimeMillis()))
         .block()
     }
 
     val duration = System.currentTimeMillis() - start.get()
 
-    assert(maybeResponse.failed.get.isInstanceOf[ResponseTimeoutException], "- Client emitted an incorrect exception!")
+    assert(maybeResponse.failed.get.isInstanceOf[ContentTimeoutException], "- Client emitted an incorrect exception!")
     duration shouldBe responseTimeout.toLong +- 250
   }
 

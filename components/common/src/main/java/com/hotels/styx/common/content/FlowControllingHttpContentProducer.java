@@ -16,14 +16,11 @@
 package com.hotels.styx.common.content;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.hotels.styx.api.exceptions.ResponseTimeoutException;
+import com.hotels.styx.api.exceptions.ContentTimeoutException;
 import com.hotels.styx.api.extension.Origin;
 import com.hotels.styx.common.StateMachine;
 import io.netty.buffer.ByteBuf;
-import io.netty.util.HashedWheelTimer;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.Timeout;
-import io.netty.util.TimerTask;
 import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +40,6 @@ import static com.hotels.styx.common.content.FlowControllingHttpContentProducer.
 import static com.hotels.styx.common.content.FlowControllingHttpContentProducer.ProducerState.TERMINATED;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static reactor.core.publisher.Operators.addCap;
 
 /**
@@ -80,9 +76,7 @@ public class FlowControllingHttpContentProducer {
     private final Origin origin;
 
     private volatile Subscriber<? super ByteBuf> contentSubscriber;
-
-    private static HashedWheelTimer timer = new HashedWheelTimer();
-    private Timeout timeout;
+    private volatile long lastActive;
 
     enum ProducerState {
         BUFFERING,
@@ -98,19 +92,13 @@ public class FlowControllingHttpContentProducer {
             Runnable onCompleteAction,
             Consumer<Throwable> onTerminateAction,
             String loggingPrefix,
-            Origin origin,
-            long inactivityTimeoutMs) {
+            Origin origin) {
         this.askForMore = requireNonNull(askForMore);
         this.onCompleteAction = requireNonNull(onCompleteAction);
         this.onTerminateAction = requireNonNull(onTerminateAction);
         this.loggingPrefix = loggingPrefix;
         this.origin = origin;
 
-        TimerTask timerTask = timeout -> {
-            LOGGER.debug("Timeout triggered: " + timeout);
-            LOGGER.debug("Pending timeouts when triggered: " + timer.pendingTimeouts());
-            stateMachine.handle(new TearDownEvent(new RuntimeException("Inactive Subscriber")));
-        };
         this.stateMachine = new StateMachine.Builder<ProducerState>()
                 .initialState(BUFFERING)
 
@@ -128,7 +116,7 @@ public class FlowControllingHttpContentProducer {
                 .transition(BUFFERING_COMPLETED, ChannelInactiveEvent.class, e -> BUFFERING_COMPLETED)
                 .transition(BUFFERING_COMPLETED, ChannelExceptionEvent.class, s -> BUFFERING_COMPLETED)
                 .transition(BUFFERING_COMPLETED, ContentSubscribedEvent.class, this::contentSubscribedInBufferingCompleted)
-                .transition(BUFFERING_COMPLETED, ContentEndEvent.class, s -> BUFFERING_COMPLETED)
+                .transition(BUFFERING_COMPLETED, ContentEndEvent.class, this::contentEndEventWhileBufferingCompleted)
 
                 .transition(STREAMING, RxBackpressureRequestEvent.class, this::rxBackpressureRequestEventInStreaming)
                 .transition(STREAMING, ContentChunkEvent.class, this::contentChunkInStreaming)
@@ -157,40 +145,28 @@ public class FlowControllingHttpContentProducer {
                 .transition(TERMINATED, ContentChunkEvent.class, this::spuriousContentChunkEvent)
                 .transition(TERMINATED, ContentSubscribedEvent.class, this::contentSubscribedInTerminatedState)
                 .transition(TERMINATED, RxBackpressureRequestEvent.class, ev -> TERMINATED)
+                .transition(TERMINATED, TearDownEvent.class, ev -> TERMINATED)
 
                 .onInappropriateEvent((state, event) -> {
                     LOGGER.warn(warningMessage("Inappropriate event=" + event.getClass().getSimpleName()));
                     return state;
-                })
-                .onStateChange((oldState, newState, event) -> {
-                    resetTimeoutIfNecessary(inactivityTimeoutMs, timerTask, oldState, newState, event);
                 }).build();
-        timeout = timer.newTimeout(timerTask, inactivityTimeoutMs, MILLISECONDS);
-        LOGGER.debug("Timeout created: " + timeout);
+        touchLastActive();
     }
 
-    private void resetTimeoutIfNecessary(long inactivityTimeoutMs, TimerTask timerTask, ProducerState oldState, ProducerState newState, Object event) {
-        LOGGER.debug("State change event: \n    " + event + "(" + oldState + " -> " + newState + ")");
-        LOGGER.debug("Pending timeouts before cancellation: " + timer.pendingTimeouts());
-        if (newState.equals(COMPLETED) || newState.equals(TERMINATED)) {
-            LOGGER.debug("Timeout Cancelled: " + timeout);
-            timeout.cancel();
-        } else if (event instanceof RxBackpressureRequestEvent || event instanceof ContentSubscribedEvent) {
-            timeout.cancel();
-            LOGGER.debug("Timeout being replaced: " + timeout);
-            timeout = timer.newTimeout(timerTask, inactivityTimeoutMs, MILLISECONDS);
-            LOGGER.debug("New Timeout: " + timeout);
-        }
-        LOGGER.debug("Pending timeouts after cancellation: " + timer.pendingTimeouts());
+    private void touchLastActive() {
+        lastActive = System.currentTimeMillis();
     }
 
     /*
-     * BUFFERING state event handlers
+     * BUFFERINlxG state event handlers
      */
+
     private ProducerState rxBackpressureRequestInBuffering(RxBackpressureRequestEvent event) {
         // This can occur before the actual content subscribe event. This occurs if the subscriber
         // has called request() before having subscribed to the content observable. In this
         // case just initialise the request count with requested N value.
+        touchLastActive();
         requested.compareAndSet(Long.MAX_VALUE, 0);
         getAndAddRequest(requested, event.n());
 
@@ -198,7 +174,6 @@ public class FlowControllingHttpContentProducer {
 
         return this.state();
     }
-
     private ProducerState contentChunkInBuffering(ContentChunkEvent event) {
         queue(event.chunk);
         askForMore();
@@ -213,6 +188,7 @@ public class FlowControllingHttpContentProducer {
     }
 
     private ProducerState contentSubscribedInBuffering(ContentSubscribedEvent event) {
+        touchLastActive();
         this.contentSubscriber = event.subscriber;
         emitChunks(this.contentSubscriber);
         askForMore();
@@ -220,22 +196,23 @@ public class FlowControllingHttpContentProducer {
     }
 
     private ProducerState contentEndEventWhileBuffering(ContentEndEvent event) {
+        touchLastActive();
         return BUFFERING_COMPLETED;
     }
 
     /*
      * BUFFERING_COMPLETED event handlers
      */
+
     private ProducerState rxBackpressureRequestInBufferingCompleted(RxBackpressureRequestEvent event) {
         // This can occur before the actual content subscribe event. This occurs if the subscriber
         // has called request() before actually having subscribed to the content observable. In this
         // case just initialise the request count with requested N value.
+        touchLastActive();
         requested.compareAndSet(Long.MAX_VALUE, 0);
         getAndAddRequest(requested, event.n());
-
         return this.state();
     }
-
     private ProducerState spuriousContentChunkEvent(ContentChunkEvent event) {
         // Should not occur because content has already been fully consumed.
         LOGGER.warn(warningMessage("Spurious content chunk: " + event));
@@ -244,6 +221,7 @@ public class FlowControllingHttpContentProducer {
     }
 
     private ProducerState contentSubscribedInBufferingCompleted(ContentSubscribedEvent event) {
+        touchLastActive();
         this.contentSubscriber = event.subscriber;
         if (readQueue.size() == 0) {
             this.contentSubscriber.onComplete();
@@ -262,11 +240,16 @@ public class FlowControllingHttpContentProducer {
         }
     }
 
+    private ProducerState contentEndEventWhileBufferingCompleted(ContentEndEvent event) {
+        touchLastActive();
+        return this.state();
+    }
 
     /*
      * STREAMING event handlers
      */
     private ProducerState rxBackpressureRequestEventInStreaming(RxBackpressureRequestEvent event) {
+        touchLastActive();
         requested.compareAndSet(Long.MAX_VALUE, 0);
         getAndAddRequest(requested, event.n());
 
@@ -330,6 +313,7 @@ public class FlowControllingHttpContentProducer {
     }
 
     private ProducerState contentEndEventWhileStreaming(ContentEndEvent event) {
+        touchLastActive();
         if (readQueue.size() > 0) {
             return EMITTING_BUFFERED_CONTENT;
         } else {
@@ -350,6 +334,7 @@ public class FlowControllingHttpContentProducer {
      * EMITTING_BUFFERED_CONTENT event handlers
      */
     private ProducerState rxBackpressureRequestInEmittingBufferedContent(RxBackpressureRequestEvent event) {
+        touchLastActive();
         requested.compareAndSet(Long.MAX_VALUE, 0);
         getAndAddRequest(requested, event.n());
 
@@ -429,9 +414,10 @@ public class FlowControllingHttpContentProducer {
         stateMachine.handle(new ChannelInactiveEvent(cause));
     }
 
-    public void tearDownResources() {
-        stateMachine.handle(new TearDownEvent(new ResponseTimeoutException(origin,
-                "channelClosed",
+    public void tearDownResources(String message) {
+        stateMachine.handle(new TearDownEvent(new ContentTimeoutException(
+                origin,
+                format("%s. %s", loggingPrefix, message),
                 receivedBytes(),
                 receivedChunks(),
                 emittedBytes(),
@@ -469,8 +455,16 @@ public class FlowControllingHttpContentProducer {
         return receivedBytes.get();
     }
 
-    public long receivedChunks() {
+    long receivedChunks() {
         return receivedChunks.get();
+    }
+
+    long lastActive() {
+        return lastActive;
+    }
+
+    boolean isWaitingForSubscriber() {
+        return requested.get() == 0;
     }
 
     /*
