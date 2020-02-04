@@ -31,6 +31,8 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.handler.ssl.SslContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.util.Optional;
@@ -55,6 +57,7 @@ public class NettyConnectionFactory implements Connection.Factory {
     private final HttpRequestOperationFactory httpRequestOperationFactory;
     private final NettyExecutor executor;
     private Bootstrap bootstrap;
+    private static final Logger LOGGER = LoggerFactory.getLogger(NettyConnectionFactory.class);
 
     private NettyConnectionFactory(Builder builder) {
         this.executor = requireNonNull(builder.executor);
@@ -87,7 +90,11 @@ public class NettyConnectionFactory implements Connection.Factory {
 
     private ChannelFuture openConnection(Origin origin, ConnectionSettings connectionSettings) {
         bootstrap(connectionSettings);
-        return bootstrap.connect(origin.host(), origin.port());
+
+        ChannelFuture channelFuture = bootstrap.connect(origin.host(), origin.port());
+        return channelFuture.addListener( future -> {
+            LOGGER.warn("Connected - Future for connection {} with channel {} ", future, channelFuture.channel().localAddress() );
+        } );
     }
 
     private synchronized void bootstrap(ConnectionSettings connectionSettings) {
