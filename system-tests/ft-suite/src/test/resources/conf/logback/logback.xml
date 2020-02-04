@@ -16,7 +16,7 @@
   <logger name="com.hotels.styx.server.netty.connectors.HttpPipelineHandler" level="OFF"/>
   <logger name="com.hotels.styx.servers.MockOriginServer" level="OFF"/>
 
-  <root level="OFF">
+  <root level="DEBUG">
     <appender-ref ref="CONSOLE"/>
   </root>
 </configuration>
