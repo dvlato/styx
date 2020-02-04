@@ -26,8 +26,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpContentDecompressor;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.AttributeKey;
@@ -90,7 +88,6 @@ public class NettyConnection implements Connection {
         if (httpConfig.compress()) {
             pipeline.addLast("decompressor", new HttpContentDecompressor());
         }
-        pipeline.addLast("logger", new LoggingHandler(LogLevel.ERROR));
     }
 
     @Override
