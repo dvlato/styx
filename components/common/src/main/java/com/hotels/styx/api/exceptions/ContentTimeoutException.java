@@ -33,7 +33,8 @@ public class ContentTimeoutException extends TransportException implements IsDea
         super(message(origin, reason, bytesReceived, chunksReceived, bytesEmitted, chunksEmitted));
         this.origin = origin;
         //FIX-ME: This will invoke a method before successfully building the object. Just for testing.
-        LOGGER.warn("Content timeout exception generated: {} ", this);
+        LOGGER.warn("Content timeout exception generated", this);
+        LOGGER.warn("Content timeout exception generated, exception added", new Exception("Exception added"));
     }
 
     private static String message(Origin origin, String reason, long bytesReceived, long chunksReceived, long bytesEmitted, long chunksEmitted) {
