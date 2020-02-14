@@ -74,7 +74,8 @@ public class HttpRequestOperation {
 
     /**
      * Constructs an instance.
-     *  @param request               HTTP request
+     *
+     * @param request               HTTP request
      * @param originStatsFactory    OriginStats factory
      * @param responseTimeoutMillis response timeout in milliseconds
      * @param requestLoggingEnabled
@@ -86,7 +87,7 @@ public class HttpRequestOperation {
         this.responseTimeoutMillis = responseTimeoutMillis;
         this.requestLoggingEnabled = requestLoggingEnabled;
         this.httpRequestMessageLogger = new HttpRequestMessageLogger("com.hotels.styx.http-messages.outbound", longFormat, httpMessageFormatter);
-        LOGGER.warn("Response timeout millis is "+responseTimeoutMillis, new Exception("Response timeout millis is "+responseTimeoutMillis));
+        LOGGER.warn("Response timeout millis is " + responseTimeoutMillis, new Exception("Response timeout millis is " + responseTimeoutMillis));
     }
 
     @VisibleForTesting
@@ -136,29 +137,29 @@ public class HttpRequestOperation {
                     httpRequestMessageLogger.logRequest(request, nettyConnection.getOrigin());
                 }
             } else {
-              LOGGER.warn("NettyConnection is not connected" +nettyConnection, " Channel: "+nettyConnection.channel());
-              sink.error(new Throwable("Not connected "+nettyConnection));
+                LOGGER.warn("NettyConnection is not connected" + nettyConnection, " Channel: " + nettyConnection.channel());
+                sink.error(new Throwable("Not connected " + nettyConnection));
             }
         });
 
-        if (requestLoggingEnabled) {
-            responseFlux = responseFlux
-                    .doOnNext(response -> {
-                        httpRequestMessageLogger.logResponse(request, response);
-                    });
-        }
-        return responseFlux.map(response ->
-                        Requests.doFinally(response, cause -> {
-                            if (nettyConnection.isConnected()) {
-                                removeProxyBridgeHandlers(nettyConnection);
 
-                                if (requestIsOngoing(requestRequestBodyChunkSubscriber.get())) {
-                                    LOGGER.warn("Origin responded too quickly to an ongoing request, or it was cancelled. Connection={}, Request={}.",
-                                            new Object[]{nettyConnection.channel(), this.request});
-                                    nettyConnection.close();
-                                }
-                            }
-                        }));
+        responseFlux = responseFlux
+                .doOnNext(response -> {
+                    httpRequestMessageLogger.logResponse(request, response);
+                }).doOnError(error -> LOGGER.warn("Error detected in responseFlux ", error));
+
+        return responseFlux.map(response ->
+                Requests.doFinally(response, cause -> {
+                    if (nettyConnection.isConnected()) {
+                        removeProxyBridgeHandlers(nettyConnection);
+
+                        if (requestIsOngoing(requestRequestBodyChunkSubscriber.get())) {
+                            LOGGER.warn("Origin responded too quickly to an ongoing request, or it was cancelled. Connection={}, Request={}.",
+                                    new Object[]{nettyConnection.channel(), this.request});
+                            nettyConnection.close();
+                        }
+                    }
+                }));
     }
 
     private void addProxyBridgeHandlers(NettyConnection nettyConnection, FluxSink<LiveHttpResponse> sink) {
@@ -175,11 +176,13 @@ public class HttpRequestOperation {
     }
 
     private void removeProxyBridgeHandlers(NettyConnection connection) {
+        LOGGER.warn("Proxy bridge handler remove called");
         ChannelPipeline pipeline = connection.channel().pipeline();
         terminationCount.incrementAndGet();
 
         try {
             pipeline.remove(IDLE_HANDLER_NAME);
+            LOGGER.warn("Idle handler removed");
             if (originStatsFactory.isPresent()) {
                 pipeline.remove(RequestsToOriginMetricsCollector.NAME);
             }
@@ -234,7 +237,7 @@ public class HttpRequestOperation {
             if (originChannel.isActive()) {
                 io.netty.handler.codec.http.HttpRequest httpRequest = makeRequest(request);
                 originChannel.writeAndFlush(httpRequest)
-                    .addListener(subscribeToRequestBody());
+                        .addListener(subscribeToRequestBody());
             } else {
                 responseFromOriginFlux.error(new TransportLostException(originChannel.remoteAddress(), nettyConnection.getOrigin()));
             }
