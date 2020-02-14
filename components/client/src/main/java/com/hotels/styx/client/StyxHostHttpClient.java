@@ -22,6 +22,8 @@ import com.hotels.styx.api.extension.loadbalancing.spi.LoadBalancingMetric;
 import com.hotels.styx.api.extension.loadbalancing.spi.LoadBalancingMetricSupplier;
 import com.hotels.styx.client.connectionpool.ConnectionPool;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 import static java.util.Objects.requireNonNull;
@@ -30,6 +32,7 @@ import static java.util.Objects.requireNonNull;
  * A Styx HTTP Client for proxying to an individual origin host.
  */
 public class StyxHostHttpClient implements LoadBalancingMetricSupplier {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StyxHostHttpClient.class);
     private final ConnectionPool pool;
 
     StyxHostHttpClient(ConnectionPool pool) {
@@ -46,7 +49,10 @@ public class StyxHostHttpClient implements LoadBalancingMetricSupplier {
 
                     return ResponseEventListener.from(connection.write(request))
                             .whenCancelled(() -> pool.closeConnection(connection))
-                            .whenResponseError(cause -> pool.closeConnection(connection))
+                            .whenResponseError(cause -> {
+                                LOGGER.warn("Response error detected for request " + request, cause);
+                                pool.closeConnection(connection);
+                            })
                             .whenContentError(cause -> pool.closeConnection(connection))
                             .whenCompleted(response -> pool.returnConnection(connection))
                             .apply();

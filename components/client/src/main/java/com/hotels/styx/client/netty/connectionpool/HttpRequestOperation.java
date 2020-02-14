@@ -135,6 +135,9 @@ public class HttpRequestOperation {
                 if (requestLoggingEnabled) {
                     httpRequestMessageLogger.logRequest(request, nettyConnection.getOrigin());
                 }
+            } else {
+              LOGGER.warn("NettyConnection is not connected" +nettyConnection, " Channel: "+nettyConnection.channel());
+              sink.error(new Throwable("Not connected "+nettyConnection));
             }
         });
 
