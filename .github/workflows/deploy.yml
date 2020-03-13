@@ -1,5 +1,8 @@
 name: Java CI
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - workflow
 jobs:
   pipeline:
     runs-on: ubuntu-latest
